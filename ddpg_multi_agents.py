@@ -9,13 +9,13 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 
-BUFFER_SIZE = int(1e6)  # 1e5 replay buffer size
-BATCH_SIZE = 128       # minibatch size
+BUFFER_SIZE = int(1e5)  # replay buffer size
+BATCH_SIZE = 512       # minibatch size
 GAMMA = 0.99            # 0.99 discount factor
 TAU = 1e-3              # for soft update of target parameters
 WEIGHT_DECAY = 0        # L2 weight decay
-LEARN_EVERY = 20        # Update the networks 10 times after every 20 timesteps
-LEARN_NUMBER = 10       # Update the networks 10 times after every 20 timesteps
+LEARN_EVERY = 2        # Update the networks 10 times after every 20 timesteps
+LEARN_NUMBER = 3       # Update the networks 10 times after every 20 timesteps
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -42,7 +42,6 @@ class MultiAgents():
     
     def step(self, states, actions, rewards, next_states, dones, timestamp):
         """Save experience in replay memory, and use random sample from buffer to learn."""
-        # Save experience / reward
         self.memory.add(states, actions, rewards, next_states, dones)
 
         # Learn, if enough samples are available in memory
@@ -82,7 +81,7 @@ class MultiAgents():
         actions_target =[agent_j.actor_target(states.index_select(1, torch.tensor([j]).to(device)).squeeze(1)) for j, agent_j in enumerate(self.agents)]
         
         agent_action_pred = agent.actor_local(states.index_select(1, agent.index).squeeze(1))
-        actions_pred = [agent_action_pred if j==agent.index.numpy()[0] else actions.index_select(1, torch.tensor([j]).to(device)).squeeze(1) for j, agent_j in enumerate(self.ma)]
+        actions_pred = [agent_action_pred if j==agent.index.numpy()[0] else actions.index_select(1, torch.tensor([j]).to(device)).squeeze(1) for j, agent_j in enumerate(self.agents)]
         
         agent.learn(experiences,
                     gamma,
@@ -114,11 +113,12 @@ class ReplayBuffer:
         """Randomly sample a batch of experiences from memory."""
         experiences = random.sample(self.memory, k=self.batch_size)
 
-        states = torch.from_numpy(np.vstack([e.state for e in experiences if e is not None])).float().to(device)
-        actions = torch.from_numpy(np.vstack([e.action for e in experiences if e is not None])).float().to(device)
-        rewards = torch.from_numpy(np.vstack([e.reward for e in experiences if e is not None])).float().to(device)
-        next_states = torch.from_numpy(np.vstack([e.next_state for e in experiences if e is not None])).float().to(device)
-        dones = torch.from_numpy(np.vstack([e.done for e in experiences if e is not None]).astype(np.uint8)).float().to(device)
+        states = torch.from_numpy(np.stack([e.state for e in experiences if e is not None])).float().to(device)
+        actions = torch.from_numpy(np.stack([e.action for e in experiences if e is not None])).float().to(device)
+        rewards = torch.from_numpy(np.stack([e.reward for e in experiences if e is not None])).float().to(device)
+        next_states = torch.from_numpy(np.stack([e.next_state for e in experiences if e is not None])).float().to(device)
+        dones = torch.from_numpy(np.stack([e.done for e in experiences if e is not None]).astype(np.uint8)).float().to(device)
+        
         return (states, actions, rewards, next_states, dones)
 
     def __len__(self):

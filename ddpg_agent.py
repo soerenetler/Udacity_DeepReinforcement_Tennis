@@ -12,7 +12,7 @@ import torch.optim as optim
 GAMMA = 0.99            # 0.99 discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR_ACTOR = 1e-4         # 2e-4 learning rate of the actor # ADDED
-LR_CRITIC = 1e-3        # 2e-4 learning rate of the critic # ADDED
+LR_CRITIC = 1e-4        # 2e-4 learning rate of the critic # ADDED
 WEIGHT_DECAY = 0        # L2 weight decay
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -103,7 +103,8 @@ class Agent():
         # Compute actor loss
         # actions_pred = self.actor_local(states)
         actions_pred = torch.cat(actions_pred, dim=1).to(device)
-        actor_loss = -self.critic_local(states, actions_pred.reshape(actions_pred.shape[0], -1)).mean()
+        actions_pred = actions_pred.reshape(actions_pred.shape[0], -1)
+        actor_loss = -self.critic_local(states, actions_pred).mean()
         # Minimize the loss
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
