@@ -78,10 +78,12 @@ class MultiAgents():
         states, actions, rewards, next_states, dones = experiences
 
         #TODO makes this look better
-        actions_target =[agent_j.actor_target(states.index_select(1, torch.tensor([j]).to(device)).squeeze(1)) for j, agent_j in enumerate(self.agents)]
+        actions_target =[agent_j.actor_target(states[:, j].squeeze(1)) for j, agent_j in enumerate(self.agents)]
         
-        agent_action_pred = agent.actor_local(states.index_select(1, agent.index).squeeze(1))
-        actions_pred = [agent_action_pred if j==agent.index.numpy()[0] else actions.index_select(1, torch.tensor([j]).to(device)).squeeze(1) for j, agent_j in enumerate(self.agents)]
+        print(states[:, agent.index].squeeze(1).shape)
+        print(states[:, agent.index].shape)
+        agent_action_pred = agent.actor_local(states[:, agent.index].squeeze(1))
+        actions_pred = [agent_action_pred if j==agent.index else actions[:,j].squeeze(1) for j, agent_j in enumerate(self.agents)]
         
         agent.learn(experiences,
                     gamma,

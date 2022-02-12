@@ -31,7 +31,7 @@ class Agent():
         """
         self.state_size = state_size
         self.action_size = action_size
-        self.index = index = torch.tensor([index]).to(device)
+        self.index = index
         self.seed = random.seed(random_seed)
 
         # Actor Network (w/ Target Network)
@@ -75,9 +75,9 @@ class Agent():
         """
         states, actions, rewards, next_states, dones = experiences
         rewards = rewards.unsqueeze(-1)
-        own_reward = rewards.index_select(1, self.index).squeeze(1)
+        own_reward = rewards[:,self.index].squeeze(1)
         dones = dones.unsqueeze(-1)
-        own_done = dones.index_select(1, self.index).squeeze(1)
+        own_done = dones[:,self.index].squeeze(1)
         states = states.reshape(states.shape[0], -1)
         actions = actions.reshape(actions.shape[0], -1)
         next_states = next_states.reshape(next_states.shape[0], -1)
