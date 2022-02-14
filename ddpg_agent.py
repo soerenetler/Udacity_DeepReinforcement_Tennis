@@ -40,8 +40,8 @@ class Agent():
         self.actor_optimizer = optim.Adam(self.actor_local.parameters(), lr=LR_ACTOR)
 
         # Critic Network (w/ Target Network)
-        self.critic_local = Critic(nb_agents*state_size, nb_agents*action_size, random_seed).to(device)
-        self.critic_target = Critic(nb_agents*state_size, nb_agents*action_size, random_seed).to(device)
+        self.critic_local = Critic(state_size, action_size, random_seed).to(device)
+        self.critic_target = Critic(state_size, action_size, random_seed).to(device)
         self.critic_optimizer = optim.Adam(self.critic_local.parameters(), lr=LR_CRITIC, weight_decay=WEIGHT_DECAY)
 
         # Noise process
@@ -49,19 +49,20 @@ class Agent():
 
     def act(self, state, add_noise=True):
         """Returns actions for given state as per current policy."""
+        #print(state.shape)
         state = torch.from_numpy(state).float().to(device)
         self.actor_local.eval()
         with torch.no_grad():
             action = self.actor_local(state).cpu().data.numpy()
         self.actor_local.train()
         if add_noise:
-            action += self.noise.sample() # * self.epsilon
+            action += self.noise.sample()
         return np.clip(action, -1, 1)
 
     def reset(self):
         self.noise.reset()
 
-    def learn(self, experiences, gamma, actions_target, actions_pred):
+    def learn(self, experiences, gamma):
         """Update policy and value parameters using given batch of experience tuples.
         Q_targets = r + γ * critic_target(next_state, actor_target(next_state))
         where:
@@ -74,22 +75,14 @@ class Agent():
             gamma (float): discount factor
         """
         states, actions, rewards, next_states, dones = experiences
-        rewards = rewards.unsqueeze(-1)
-        own_reward = rewards[:,self.index].squeeze(1)
-        dones = dones.unsqueeze(-1)
-        own_done = dones[:,self.index].squeeze(1)
-        states = states.reshape(states.shape[0], -1)
-        actions = actions.reshape(actions.shape[0], -1)
-        next_states = next_states.reshape(next_states.shape[0], -1)
-
+        
         # ---------------------------- update critic ---------------------------- #
-        # Get predicted next-state actions and Q values from target models
-        actions_target = torch.cat(actions_target, dim=1).to(device)
-        #actions_next = self.actor_target(next_states)
+        # Get predicted next-state actions and Q values from target models     
+        actions_next = self.actor_target(next_states)  
+        Q_targets_next = self.critic_target(next_states, actions_next)
 
-        Q_targets_next = self.critic_target(next_states, actions_target.reshape(next_states.shape[0], -1))
         # Compute Q targets for current states (y_i)
-        Q_targets = own_reward + (gamma * Q_targets_next * (1 - own_done))
+        Q_targets = rewards + (gamma * Q_targets_next * (1 - dones))
         # Compute critic loss
         Q_expected = self.critic_local(states, actions)
         critic_loss = F.mse_loss(Q_expected, Q_targets)
@@ -101,10 +94,8 @@ class Agent():
 
         # ---------------------------- update actor ---------------------------- #
         # Compute actor loss
-        # actions_pred = self.actor_local(states)
-        actions_pred = torch.cat(actions_pred, dim=1).to(device)
-        actions_pred = actions_pred.reshape(actions_pred.shape[0], -1)
-        actor_loss = -self.critic_local(states, actions_pred).mean()
+        actions_prd = self.actor_local(states)        
+        actor_loss = -self.critic_local(states, actions_prd).mean()
         # Minimize the loss
         self.actor_optimizer.zero_grad()
         actor_loss.backward()

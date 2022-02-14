@@ -12,7 +12,7 @@ def hidden_init(layer):
 class Actor(nn.Module):
     """Actor (Policy) Model."""
 
-    def __init__(self, state_size, action_size, seed, fc_units=256):
+    def __init__(self, state_size, action_size, seed, fc1_units=512, fc2_units=256):
         """Initialize parameters and build model.
         Params
         ======
@@ -24,11 +24,10 @@ class Actor(nn.Module):
         """
         super(Actor, self).__init__()
         self.seed = torch.manual_seed(seed)
-        self.fc1 = nn.Linear(state_size, fc_units)
-        self.fc2 = nn.Linear(fc_units, fc_units)
-        #could add one more layer
-        self.fc3 = nn.Linear(fc_units, action_size)
-        self.bn1 = nn.BatchNorm1d(fc_units)
+        self.fc1 = nn.Linear(state_size, fc1_units)
+        self.fc2 = nn.Linear(fc1_units, fc2_units)
+        self.fc3 = nn.Linear(fc2_units, action_size)
+        self.bn1 = nn.BatchNorm1d(fc1_units)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -39,7 +38,7 @@ class Actor(nn.Module):
     def forward(self, state):
         """Build an actor (policy) network that maps states -> actions."""
         x = F.relu(self.fc1(state))
-        x = self.bn1(x)
+        #x = self.bn1(x)
         x = F.relu(self.fc2(x))
         return F.tanh(self.fc3(x))
 
@@ -47,7 +46,7 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     """Critic (Value) Model."""
 
-    def __init__(self, state_size, action_size, seed, fcs1_units=256, fc2_units=256, fc3_units=128):
+    def __init__(self, state_size, action_size, seed, fcs1_units=512, fc2_units=256):
         """Initialize parameters and build model.
         Params
         ======
@@ -73,7 +72,7 @@ class Critic(nn.Module):
     def forward(self, state, action):
         """Build a critic (value) network that maps (state, action) pairs -> Q-values."""
         xs = F.relu(self.fcs1(state))
-        xs = self.bn1(xs)
+        #xs = self.bn1(xs)
         x = torch.cat((xs, action), dim=1)
         x = F.relu(self.fc2(x))
         return self.fc3(x)
